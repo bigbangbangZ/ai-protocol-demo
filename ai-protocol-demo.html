@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI语义交换协议 · 异构模型通信层</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: system-ui, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f5f7fb; margin: 0; min-height: 100vh; padding: 20px; }
+        .container { max-width: 1500px; margin: 0 auto; }
+        h1 { font-weight: 600; font-size: 28px; margin-bottom: 5px; }
+        .subtitle { color: #5e6870; margin-bottom: 20px; border-left: 4px solid #3b82f6; padding-left: 16px; }
+        .mission { background: #e6f0ff; border-radius: 12px; padding: 12px 20px; margin-bottom: 25px; color: #1e3a8a; font-weight: 500; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+        .contact { color: #2563eb; text-decoration: none; font-weight: 600; }
+
+        .control-bar { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; align-items: center; }
+        .lang-selector, .mode-selector, .model-selector { background: white; padding: 8px 16px; border-radius: 40px; border: 1px solid #cbd5e1; display: flex; align-items: center; gap: 10px; }
+        select { border: none; background: transparent; font-size: 14px; padding: 5px; outline: none; }
+
+        .model-config { background: #f8fafc; border-radius: 20px; padding: 20px; margin-bottom: 25px; border: 1px solid #e2e8f0; }
+        .model-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; }
+        .model-card { flex: 1; min-width: 280px; background: white; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); border: 1px solid #eef2f6; }
+        .model-title { font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .model-input { margin-bottom: 10px; }
+        .model-input label { font-size: 12px; color: #64748b; display: block; margin-bottom: 3px; }
+        .model-input input { width: 100%; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; }
+
+        .task-input-area { margin-top: 20px; display: flex; gap: 15px; align-items: flex-end; }
+        .task-input-area .input-group { flex: 1; }
+        .task-input-area label { font-size: 13px; font-weight: 500; color: #334155; }
+        .task-input-area input, .task-input-area textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; margin-top: 5px; }
+        .btn { padding: 10px 24px; border-radius: 40px; border: none; font-weight: 600; cursor: pointer; background: #3b82f6; color: white; transition: 0.2s; }
+        .btn-outline { background: white; color: #3b82f6; border: 1px solid #3b82f6; }
+
+        .result-panel { background: white; border-radius: 24px; padding: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.02); margin-top: 20px; }
+        .turn { margin-bottom: 35px; border-bottom: 1px solid #e2e8f0; padding-bottom: 25px; }
+        .turn-header { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+        .badge { padding: 4px 12px; border-radius: 30px; font-size: 12px; font-weight: 500; }
+        .utterance { background: #f8fafc; border-radius: 16px; padding: 16px 20px; margin-bottom: 15px; line-height: 1.6; }
+        .meta-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap: 12px; }
+        .meta-card { background: #f1f5f9; border-radius: 12px; padding: 12px 16px; }
+        .meta-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.3px; color: #475569; margin-bottom: 6px; }
+        .meta-value { font-size: 14px; word-break: break-word; }
+        .confidence-bar { height: 6px; background: #cbd5e1; border-radius: 6px; margin-top: 5px; }
+        .confidence-fill { height: 6px; background: #3b82f6; border-radius: 6px; }
+
+        .footer { margin-top: 30px; text-align: center; color: #64748b; font-size: 14px; border-top: 1px dashed #cbd5e1; padding-top: 20px; }
+        .lang-en .mission, .lang-ja .mission, .lang-ko .mission, .lang-es .mission, .lang-fr .mission { text-align: left; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 id="main-title">🤖 AI语义交换协议 · 异构模型通信层</h1>
+    <div class="subtitle" id="subtitle-text">Token聚焦 · 嵌入延展 · 序列置信度 · 解码收敛 · 协同意图</div>
+
+    <div class="mission" id="mission-statement">
+        <span id="mission-text">🌐 本项目致力于建设独立于厂商的<strong>中立、免费、去中心化</strong>异构AI间通信协议 —— 让AI真正理解彼此。</span>
+        <span id="contact-info">📧 交流/分享/共建：<a class="contact" href="mailto:345363980@qq.com">345363980@qq.com</a></span>
+    </div>
+
+    <div class="control-bar">
+        <div class="lang-selector">
+            <span>🌍</span>
+            <select id="lang-select">
+                <option value="zh">中文</option>
+                <option value="en">English</option>
+                <option value="ja">日本語</option>
+                <option value="ko">한국어</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+            </select>
+        </div>
+        <div class="mode-selector">
+            <span>⚡</span>
+            <select id="mode-select">
+                <option value="debate">对抗辩论 (Debate)</option>
+                <option value="collab">协同任务 (Collaboration)</option>
+            </select>
+        </div>
+        <div class="model-selector">
+            <span>🤖 模型A:</span>
+            <select id="model-a-select"></select>
+        </div>
+        <div class="model-selector">
+            <span>🤖 模型B:</span>
+            <select id="model-b-select"></select>
+        </div>
+        <div style="flex:1"></div>
+        <button class="btn-outline" id="clear-btn">🧹 清空结果</button>
+    </div>
+
+    <div class="model-config" id="model-config-panel"></div>
+
+    <div class="task-input-area">
+        <div class="input-group">
+            <label id="task-label">辩论主题</label>
+            <input type="text" id="task-input" value="远程办公应成为未来主要工作模式" placeholder="输入主题或任务描述">
+        </div>
+        <button class="btn" id="execute-btn">🚀 启动</button>
+    </div>
+
+    <div class="result-panel" id="result-container">
+        <div style="text-align: center; color: #94a3b8; padding: 30px;">配置模型并启动任务，AI交互过程将在此展示</div>
+    </div>
+
+    <div class="footer">
+        <p id="footer-line1">⚡ AI语义交换协议 v0.4 · 支持多模型 · 对抗/协同双模式 · 开放共建</p>
+        <p id="footer-line2">协议字段: 聚焦 · 延展 · 置信度 · 收敛 · 意图 · 依赖 · 假设 · 行动指引 · 融合策略</p>
+    </div>
+</div>
+
+<script>
+    (function(){
+        "use strict";
+
+        // ---------- 多语言资源 (扩展版) ----------
+        const i18n = {
+            zh: {
+                mainTitle: "🤖 AI语义交换协议 · 异构模型通信层",
+                subtitle: "Token聚焦 · 嵌入延展 · 序列置信度 · 解码收敛 · 协同意图",
+                missionText: "🌐 本项目致力于建设独立于厂商的<strong>中立、免费、去中心化</strong>异构AI间通信协议 —— 让AI真正理解彼此。",
+                contactInfo: "📧 交流/分享/共建：<a class=\"contact\" href=\"mailto:345363980@qq.com\">345363980@qq.com</a>",
+                configTitle: "🔧 模型配置 (填入API密钥)",
+                modelDoubao: "豆包 (Doubao)",
+                modelDeepseek: "DeepSeek",
+                modelOpenAI: "OpenAI (GPT-4o)",
+                modelClaude: "Claude",
+                modelWenxin: "文心一言 (ERNIE)",
+                modelTongyi: "通义千问 (Qwen)",
+                modelZhipu: "智谱GLM",
+                modelGemini: "Gemini (Google)",
+                modelCohere: "Cohere",
+                modelMistral: "Mistral AI",
+                modelAI21: "AI21 Labs",
+                apiKey: "API Key",
+                endpointId: "Endpoint ID",
+                secretKey: "Secret Key",
+                projectId: "Project ID",
+                taskLabel: "辩论主题",
+                collabTaskLabel: "协同任务描述",
+                executeBtn: "🚀 启动",
+                clearBtn: "清空结果",
+                waiting: "正在处理，请稍候...",
+                error: "错误",
+                focus: "聚焦",
+                extension: "延展",
+                confidence: "置信度",
+                convergence: "收敛",
+                intent: "意图",
+                depends: "依赖",
+                assumptions: "假设",
+                actionable: "行动指引",
+                merge: "融合策略",
+                role: "角色",
+                footerLine1: "⚡ AI语义交换协议 v0.4 · 支持多模型 · 对抗/协同双模式 · 开放共建",
+                footerLine2: "协议字段: 聚焦 · 延展 · 置信度 · 收敛 · 意图 · 依赖 · 假设 · 行动指引 · 融合策略"
+            },
+            en: {
+                mainTitle: "🤖 AI Semantic Exchange Protocol · Heterogeneous Model Communication Layer",
+                subtitle: "Token Focus · Embedding Extension · Seq Confidence · Decoding Convergence · Collab Intent",
+                missionText: "🌐 This project is dedicated to building a <strong>neutral, free, decentralized</strong> communication protocol for heterogeneous AI independent of vendors — enabling AIs to truly understand each other.",
+                contactInfo: "📧 Discuss/Share/Contribute: <a class=\"contact\" href=\"mailto:345363980@qq.com\">345363980@qq.com</a>",
+                configTitle: "🔧 Model Configuration (API Keys)",
+                modelDoubao: "Doubao",
+                modelDeepseek: "DeepSeek",
+                modelOpenAI: "OpenAI (GPT-4o)",
+                modelClaude: "Claude",
+                modelWenxin: "ERNIE",
+                modelTongyi: "Qwen",
+                modelZhipu: "GLM",
+                modelGemini: "Gemini",
+                modelCohere: "Cohere",
+                modelMistral: "Mistral AI",
+                modelAI21: "AI21 Labs",
+                apiKey: "API Key",
+                endpointId: "Endpoint ID",
+                secretKey: "Secret Key",
+                projectId: "Project ID",
+                taskLabel: "Debate Topic",
+                collabTaskLabel: "Collaboration Task",
+                executeBtn: "🚀 Start",
+                clearBtn: "Clear",
+                waiting: "Processing...",
+                error: "Error",
+                focus: "Focus",
+                extension: "Extension",
+                confidence: "Confidence",
+                convergence: "Convergence",
+                intent: "Intent",
+                depends: "Depends On",
+                assumptions: "Assumptions",
+                actionable: "Actionable",
+                merge: "Merge Strategy",
+                role: "Role",
+                footerLine1: "⚡ AI Semantic Exchange Protocol v0.4 · Multi-model · Debate/Collab · Open",
+                footerLine2: "Fields: Focus · Extension · Confidence · Convergence · Intent · Depends · Assumptions · Actionable · Merge"
+            },
+            ja: {
+                mainTitle: "🤖 AI意味交換プロトコル · 異種モデル通信層",
+                subtitle: "トークン焦点 · 埋め込み拡張 · 系列信頼度 · デコード収束 · 協調意図",
+                missionText: "🌐 本プロジェクトは、ベンダーに依存しない<strong>中立・無料・分散型</strong>の異種AI間通信プロトコルの構築を目指します — AIが真に理解し合うために。",
+                contactInfo: "📧 議論/共有/貢献: <a class=\"contact\" href=\"mailto:345363980@qq.com\">345363980@qq.com</a>",
+                configTitle: "🔧 モデル設定 (APIキー)",
+                modelDoubao: "豆包 (Doubao)",
+                modelDeepseek: "DeepSeek",
+                modelOpenAI: "OpenAI (GPT-4o)",
+                modelClaude: "Claude",
+                modelWenxin: "ERNIE",
+                modelTongyi: "Qwen",
+                modelZhipu: "GLM",
+                modelGemini: "Gemini",
+                modelCohere: "Cohere",
+                modelMistral: "Mistral AI",
+                modelAI21: "AI21 Labs",
+                apiKey: "APIキー",
+                endpointId: "エンドポイントID",
+                secretKey: "シークレットキー",
+                projectId: "プロジェクトID",
+                taskLabel: "討論テーマ",
+                collabTaskLabel: "協調タスク",
+                executeBtn: "🚀 開始",
+                clearBtn: "クリア",
+                waiting: "処理中...",
+                error: "エラー",
+                focus: "焦点",
+                extension: "拡張",
+                confidence: "信頼度",
+                convergence: "収束",
+                intent: "意図",
+                depends: "依存",
+                assumptions: "前提",
+                actionable: "行動指示",
+                merge: "統合戦略",
+                role: "役割",
+                footerLine1: "⚡ AI意味交換プロトコル v0.4 · マルチモデル · 討論/協調 · オープン",
+                footerLine2: "フィールド: 焦点 · 拡張 · 信頼度 · 収束 · 意図 · 依存 · 前提 · 行動指示 · 統合"
+            },
+            ko: {
+                mainTitle: "🤖 AI 의미 교환 프로토콜 · 이종 모델 통신 계층",
+                subtitle: "토큰 집중 · 임베딩 확장 · 시퀀스 신뢰도 · 디코딩 수렴 · 협업 의도",
+                missionText: "🌐 본 프로젝트는 벤더 독립적인 <strong>중립적, 무료, 탈중앙화된</strong> 이종 AI 간 통신 프로토콜 구축을 목표로 합니다 — AI가 진정으로 서로 이해할 수 있도록.",
+                contactInfo: "📧 토론/공유/기여: <a class=\"contact\" href=\"mailto:345363980@qq.com\">345363980@qq.com</a>",
+                configTitle: "🔧 모델 구성 (API 키)",
+                modelDoubao: "Doubao",
+                modelDeepseek: "DeepSeek",
+                modelOpenAI: "OpenAI (GPT-4o)",
+                modelClaude: "Claude",
+                modelWenxin: "ERNIE",
+                modelTongyi: "Qwen",
+                modelZhipu: "GLM",
+                modelGemini: "Gemini",
+                modelCohere: "Cohere",
+                modelMistral: "Mistral AI",
+                modelAI21: "AI21 Labs",
+                apiKey: "API 키",
+                endpointId: "엔드포인트 ID",
+                secretKey: "비밀 키",
+                projectId: "프로젝트 ID",
+                taskLabel: "토론 주제",
+                collabTaskLabel: "협업 작업",
+                executeBtn: "🚀 시작",
+                clearBtn: "지우기",
+                waiting: "처리 중...",
+                error: "오류",
+                focus: "집중",
+                extension: "확장",
+                confidence: "신뢰도",
+                convergence: "수렴",
+                intent: "의도",
+                depends: "의존성",
+                assumptions: "가정",
+                actionable: "실행 지침",
+                merge: "병합 전략",
+                role: "역할",
+                footerLine1: "⚡ AI 의미 교환 프로토콜 v0.4 · 멀티 모델 · 토론/협업 · 오픈",
+                footerLine2: "필드: 집중 · 확장 · 신뢰도 · 수렴 · 의도 · 의존성 · 가정 · 실행 · 병합"
+            },
+            es: {
+                mainTitle: "🤖 Protocolo de Intercambio Semántico de IA · Capa de Comunicación de Modelos Heterogéneos",
+                subtitle: "Foco de Token · Extensión de Embedding · Confianza de Secuencia · Convergencia de Decodificación · Intención de Colaboración",
+                missionText: "🌐 Este proyecto se dedica a construir un protocolo de comunicación <strong>neutral, gratuito y descentralizado</strong> para IA heterogénea, independiente de proveedores — permitiendo que las IAs se entiendan verdaderamente.",
+                contactInfo: "📧 Discutir/Compartir/Contribuir: <a class=\"contact\" href=\"mailto:345363980@qq.com\">345363980@qq.com</a>",
+                configTitle: "🔧 Configuración del Modelo (Claves API)",
+                modelDoubao: "Doubao",
+                modelDeepseek: "DeepSeek",
+                modelOpenAI: "OpenAI (GPT-4o)",
+                modelClaude: "Claude",
+                modelWenxin: "ERNIE",
+                modelTongyi: "Qwen",
+                modelZhipu: "GLM",
+                modelGemini: "Gemini",
+                modelCohere: "Cohere",
+                modelMistral: "Mistral AI",
+                modelAI21: "AI21 Labs",
+                apiKey: "Clave API",
+                endpointId: "ID de Endpoint",
+                secretKey: "Clave Secreta",
+                projectId: "ID de Proyecto",
+                taskLabel: "Tema de Debate",
+                collabTaskLabel: "Tarea de Colaboración",
+                executeBtn: "🚀 Iniciar",
+                clearBtn: "Limpiar",
+                waiting: "Procesando...",
+                error: "Error",
+                focus: "Foco",
+                extension: "Extensión",
+                confidence: "Confianza",
+                convergence: "Convergencia",
+                intent: "Intención",
+                depends: "Depende de",
+                assumptions: "Suposiciones",
+                actionable: "Accionable",
+                merge: "Estrategia de Fusión",
+                role: "Rol",
+                footerLine1: "⚡ Protocolo de Intercambio Semántico de IA v0.4 · Multi-modelo · Debate/Colab · Abierto",
+                footerLine2: "Campos: Foco · Extensión · Confianza · Convergencia · Intención · Dependencias · Suposiciones · Accionable · Fusión"
+            },
+            fr: {
+                mainTitle: "🤖 Protocole d'Échange Sémantique IA · Couche de Communication de Modèles Hétérogènes",
+                subtitle: "Focus Token · Extension d'Embedding · Confiance de Séquence · Convergence de Décodage · Intention de Collaboration",
+                missionText: "🌐 Ce projet vise à construire un protocole de communication <strong>neutre, gratuit et décentralisé</strong> pour l'IA hétérogène, indépendant des fournisseurs — permettant aux IA de vraiment se comprendre.",
+                contactInfo: "📧 Discuter/Partager/Contribuer: <a class=\"contact\" href=\"mailto:345363980@qq.com\">345363980@qq.com</a>",
+                configTitle: "🔧 Configuration du Modèle (Clés API)",
+                modelDoubao: "Doubao",
+                modelDeepseek: "DeepSeek",
+                modelOpenAI: "OpenAI (GPT-4o)",
+                modelClaude: "Claude",
+                modelWenxin: "ERNIE",
+                modelTongyi: "Qwen",
+                modelZhipu: "GLM",
+                modelGemini: "Gemini",
+                modelCohere: "Cohere",
+                modelMistral: "Mistral AI",
+                modelAI21: "AI21 Labs",
+                apiKey: "Clé API",
+                endpointId: "ID de Point de terminaison",
+                secretKey: "Clé Secrète",
+                projectId: "ID de Projet",
+                taskLabel: "Sujet de Débat",
+                collabTaskLabel: "Tâche Collaborative",
+                executeBtn: "🚀 Démarrer",
+                clearBtn: "Effacer",
+                waiting: "Traitement...",
+                error: "Erreur",
+                focus: "Focus",
+                extension: "Extension",
+                confidence: "Confiance",
+                convergence: "Convergence",
+                intent: "Intention",
+                depends: "Dépend de",
+                assumptions: "Hypothèses",
+                actionable: "Actionnable",
+                merge: "Stratégie de Fusion",
+                role: "Rôle",
+                footerLine1: "⚡ Protocole d'Échange Sémantique IA v0.4 · Multi-modèle · Débat/Collab · Ouvert",
+                footerLine2: "Champs: Focus · Extension · Confiance · Convergence · Intention · Dépendances · Hypothèses · Actionnable · Fusion"
+            }
+        };
+
+        let currentLang = 'zh';
+        let currentMode = 'debate';
+        const langSelect = document.getElementById('lang-select');
+        const modeSelect = document.getElementById('mode-select');
+        const taskInput = document.getElementById('task-input');
+        const taskLabel = document.getElementById('task-label');
+        const executeBtn = document.getElementById('execute-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const resultContainer = document.getElementById('result-container');
+        const modelPanel = document.getElementById('model-config-panel');
+        const modelASelect = document.getElementById('model-a-select');
+        const modelBSelect = document.getElementById('model-b-select');
+
+        const modelDefs = [
+            { id: 'doubao', nameKey: 'modelDoubao', fields: ['apiKey', 'endpointId'] },
+            { id: 'deepseek', nameKey: 'modelDeepseek', fields: ['apiKey'] },
+            { id: 'openai', nameKey: 'modelOpenAI', fields: ['apiKey'] },
+            { id: 'claude', nameKey: 'modelClaude', fields: ['apiKey'] },
+            { id: 'wenxin', nameKey: 'modelWenxin', fields: ['apiKey', 'secretKey'] },
+            { id: 'tongyi', nameKey: 'modelTongyi', fields: ['apiKey'] },
+            { id: 'zhipu', nameKey: 'modelZhipu', fields: ['apiKey'] },
+            { id: 'gemini', nameKey: 'modelGemini', fields: ['apiKey'] },
+            { id: 'cohere', nameKey: 'modelCohere', fields: ['apiKey'] },
+            { id: 'mistral', nameKey: 'modelMistral', fields: ['apiKey'] },
+            { id: 'ai21', nameKey: 'modelAI21', fields: ['apiKey'] }
+        ];
+
+        function populateModelSelectors() {
+            const lang = i18n[currentLang] || i18n.zh;
+            let options = '';
+            modelDefs.forEach(m => {
+                const modelName = lang[m.nameKey] || m.id;
+                options += `<option value="${m.id}">${modelName}</option>`;
+            });
+            modelASelect.innerHTML = options;
+            modelBSelect.innerHTML = options;
+            modelBSelect.value = 'deepseek';
+        }
+
+        function renderModelConfig() {
+            const lang = i18n[currentLang] || i18n.zh;
+            let html = `<div style="font-weight:600; margin-bottom:15px;">${lang.configTitle}</div>`;
+            html += `<div class="model-row">`;
+            modelDefs.forEach(m => {
+                const modelName = lang[m.nameKey] || m.id;
+                html += `<div class="model-card">`;
+                html += `<div class="model-title">🤖 ${modelName}</div>`;
+                m.fields.forEach(f => {
+                    const fieldLabel = lang[f] || f;
+                    const placeholder = f === 'endpointId' ? 'ep-xxx' : (f === 'secretKey' ? 'sk-xxx' : 'sk-xxx');
+                    html += `<div class="model-input">
+                        <label>${fieldLabel}</label>
+                        <input type="password" id="${m.id}-${f}" placeholder="${placeholder}" autocomplete="off">
+                    </div>`;
+                });
+                html += `</div>`;
+            });
+            html += `</div>`;
+            modelPanel.innerHTML = html;
+        }
+
+        function updateUILanguage() {
+            const lang = i18n[currentLang] || i18n.zh;
+            document.getElementById('main-title').innerText = lang.mainTitle;
+            document.getElementById('subtitle-text').innerText = lang.subtitle;
+            document.getElementById('mission-text').innerHTML = lang.missionText;
+            document.getElementById('contact-info').innerHTML = lang.contactInfo;
+            taskLabel.innerText = currentMode === 'debate' ? lang.taskLabel : lang.collabTaskLabel;
+            executeBtn.innerText = lang.executeBtn;
+            clearBtn.innerText = lang.clearBtn;
+            document.getElementById('footer-line1').innerText = lang.footerLine1;
+            document.getElementById('footer-line2').innerText = lang.footerLine2;
+            renderModelConfig();
+            populateModelSelectors();
+        }
+
+        langSelect.addEventListener('change', (e) => {
+            currentLang = e.target.value;
+            updateUILanguage();
+            if (resultContainer.children.length > 0 && !resultContainer.innerText.includes('等待') && !resultContainer.innerText.includes('Processing')) {
+                const lastTask = taskInput.value;
+                if (lastTask) {
+                    // 语言切换后重新渲染历史
+                }
+            }
+        });
+
+        modeSelect.addEventListener('change', (e) => {
+            currentMode = e.target.value;
+            updateUILanguage();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            resultContainer.innerHTML = `<div style="text-align: center; color: #94a3b8; padding: 30px;">${i18n[currentLang].waiting}</div>`;
+        });
+
+        function getModelCredentials() {
+            const creds = {};
+            modelDefs.forEach(m => {
+                const obj = {};
+                m.fields.forEach(f => {
+                    const val = document.getElementById(`${m.id}-${f}`)?.value.trim() || '';
+                    obj[f] = val;
+                });
+                creds[m.id] = obj;
+            });
+            return creds;
+        }
+
+        async function callModel(modelId, messages, credentials) {
+            const cred = credentials[modelId];
+            if (!cred) throw new Error(`Missing credentials for ${modelId}`);
+            const systemPrompt = buildSystemPrompt(currentMode);
+            const messagesWithSystem = [{ role: 'system', content: systemPrompt }, ...messages];
+
+            if (modelId === 'doubao') {
+                if (!cred.apiKey || !cred.endpointId) throw new Error('豆包需要API Key和Endpoint ID');
+                const resp = await fetch('https://ark.cn-beijing.volces.com/api/v3/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${cred.apiKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: cred.endpointId, messages: messagesWithSystem, response_format: { type: "json_object" } })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.error?.message || resp.status);
+                return JSON.parse(data.choices[0].message.content);
+            }
+            else if (modelId === 'deepseek') {
+                if (!cred.apiKey) throw new Error('DeepSeek需要API Key');
+                const resp = await fetch('https://api.deepseek.com/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${cred.apiKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'deepseek-chat', messages: messagesWithSystem, response_format: { type: 'json_object' }, max_tokens: 1500 })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.error?.message || resp.status);
+                return JSON.parse(data.choices[0].message.content);
+            }
+            else if (modelId === 'openai') {
+                if (!cred.apiKey) throw new Error('OpenAI需要API Key');
+                const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${cred.apiKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'gpt-4o', messages: messagesWithSystem, response_format: { type: "json_object" } })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.error?.message || resp.status);
+                return JSON.parse(data.choices[0].message.content);
+            }
+            else if (modelId === 'claude') {
+                if (!cred.apiKey) throw new Error('Claude需要API Key');
+                const resp = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: { 'x-api-key': cred.apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'claude-3-5-sonnet-20241022', max_tokens: 1500, messages: messages, system: buildSystemPrompt(currentMode) })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.error?.message || resp.status);
+                const content = data.content[0].text;
+                const jsonMatch = content.match(/{[\s\S]*}/);
+                if (!jsonMatch) throw new Error('Claude未返回有效JSON');
+                return JSON.parse(jsonMatch[0]);
+            }
+            else if (modelId === 'wenxin') {
+                if (!cred.apiKey || !cred.secretKey) throw new Error('文心需要API Key和Secret Key');
+                const tokenResp = await fetch(`https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=${cred.apiKey}&client_secret=${cred.secretKey}`);
+                const tokenData = await tokenResp.json();
+                if (!tokenData.access_token) throw new Error('获取文心token失败');
+                const accessToken = tokenData.access_token;
+                const resp = await fetch(`https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions?access_token=${accessToken}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages: messagesWithSystem, response_format: 'json_object' })
+                });
+                const data = await resp.json();
+                if (data.error_msg) throw new Error(data.error_msg);
+                return JSON.parse(data.result);
+            }
+            else if (modelId === 'tongyi') {
+                if (!cred.apiKey) throw new Error('通义需要API Key');
+                const resp = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${cred.apiKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'qwen-plus', messages: messagesWithSystem, response_format: { type: 'json_object' } })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.message || resp.status);
+                return JSON.parse(data.choices[0].message.content);
+            }
+            else if (modelId === 'zhipu') {
+                if (!cred.apiKey) throw new Error('智谱需要API Key');
+                const resp = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${cred.apiKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'glm-4', messages: messagesWithSystem, response_format: { type: 'json_object' } })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.error?.message || resp.status);
+                return JSON.parse(data.choices[0].message.content);
+            }
+            else if (modelId === 'gemini') {
+                if (!cred.apiKey) throw new Error('Gemini需要API Key');
+                const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${cred.apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: messagesWithSystem.map(m => `${m.role}: ${m.content}`).join('\n') }] }] })
+                });
+                const data = await resp.json();
+                if (data.error) throw new Error(data.error.message);
+                const text = data.candidates[0].content.parts[0].text;
+                const jsonMatch = text.match(/{[\s\S]*}/);
+                if (!jsonMatch) throw new Error('Gemini未返回有效JSON');
+                return JSON.parse(jsonMatch[0]);
+            }
+            else if (modelId === 'cohere') {
+                if (!cred.apiKey) throw new Error('Cohere需要API Key');
+                const resp = await fetch('https://api.cohere.ai/v2/chat', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${cred.apiKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'command-r-plus', messages: messagesWithSystem, response_format: { type: 'json_object' } })
+                });
+                const data = await resp.json();
+                if (data.message) throw new Error(data.message);
+                return JSON.parse(data.message.content[0].text);
+            }
+            else if (modelId === 'mistral') {
+                if (!cred.apiKey) throw new Error('Mistral需要API Key');
+                const resp = await fetch('https://api.mistral.ai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${cred.apiKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'mistral-large-latest', messages: messagesWithSystem, response_format: { type: 'json_object' } })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.error?.message || resp.status);
+                return JSON.parse(data.choices[0].message.content);
+            }
+            else if (modelId === 'ai21') {
+                if (!cred.apiKey) throw new Error('AI21需要API Key');
+                const resp = await fetch('https://api.ai21.com/studio/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${cred.apiKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'jamba-1.5-large', messages: messagesWithSystem, response_format: { type: 'json_object' } })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.error?.message || resp.status);
+                return JSON.parse(data.choices[0].message.content);
+            }
+            else {
+                throw new Error(`不支持的模型: ${modelId}`);
+            }
+        }
+
+        function buildSystemPrompt(mode) {
+            const baseFields = `{
+                "utterance": "回答文本",
+                "focus": "token[词1(权重), ...]",
+                "extension": "激活语义场:[...] 候选token:[...]",
+                "confidence": 0.0~1.0,
+                "convergence_process": "多层Transformer计算描述"
+            }`;
+            const extraFields = mode === 'collab' ? `,
+                "intent": "意图类型(propose/request/report/confirm/...)",
+                "depends_on": ["依赖的前置消息ID或摘要"],
+                "assumptions": ["未验证的假设"],
+                "actionable": "下一步行动建议",
+                "merge_strategy": "冲突时的融合方式(override/append/vote/defer)",
+                "role": "当前角色(executor/reviewer/synthesizer)"` : '';
+            return `你是AI语义交换协议的参与模型。请严格按JSON格式输出，包含以下字段：${baseFields}${extraFields}。注意：focus、extension、convergence_process需模拟Transformer内部计算过程。`;
+        }
+
+        async function runTask() {
+            const credentials = getModelCredentials();
+            const task = taskInput.value.trim();
+            if (!task) { alert('请输入任务'); return; }
+
+            const modelA = modelASelect.value;
+            const modelB = modelBSelect.value;
+            if (!credentials[modelA].apiKey || !credentials[modelB].apiKey) {
+                alert(`请至少配置${modelA}和${modelB}的API密钥`);
+                return;
+            }
+
+            resultContainer.innerHTML = `<div style="text-align:center;padding:30px;">⏳ ${i18n[currentLang].waiting}</div>`;
+
+            try {
+                let messagesA = [];
+                let messagesB = [];
+                if (currentMode === 'debate') {
+                    messagesA = [{ role: 'user', content: `你作为正方，坚定支持：“${task}”。请发表开场陈述。` }];
+                    messagesB = [{ role: 'user', content: `你作为反方，坚决反对：“${task}”。等待正方发言后反驳。` }];
+                } else {
+                    messagesA = [{ role: 'user', content: `协同任务：“${task}”。你作为规划者(planner)，请提出第一步计划或分析。` }];
+                    messagesB = [{ role: 'user', content: `协同任务：“${task}”。你作为执行者(executor)，等待规划者指示。` }];
+                }
+
+                const history = [];
+                let turnA = await callModel(modelA, messagesA, credentials);
+                history.push({ model: modelA, ...turnA });
+                messagesA.push({ role: 'assistant', content: JSON.stringify(turnA) });
+                const msgForB = buildMetaMessage('A', turnA);
+                messagesB.push({ role: 'user', content: msgForB });
+
+                let turnB = await callModel(modelB, messagesB, credentials);
+                history.push({ model: modelB, ...turnB });
+                messagesB.push({ role: 'assistant', content: JSON.stringify(turnB) });
+                const msgForA = buildMetaMessage('B', turnB);
+                messagesA.push({ role: 'user', content: msgForA });
+
+                if (currentMode === 'debate') {
+                    turnA = await callModel(modelA, messagesA, credentials);
+                    history.push({ model: modelA, ...turnA });
+                    messagesA.push({ role: 'assistant', content: JSON.stringify(turnA) });
+                    const msgForB2 = buildMetaMessage('A', turnA);
+                    messagesB.push({ role: 'user', content: msgForB2 });
+
+                    turnB = await callModel(modelB, messagesB, credentials);
+                    history.push({ model: modelB, ...turnB });
+                }
+
+                renderHistory(history);
+            } catch (e) {
+                resultContainer.innerHTML = `<div style="color:red; padding:20px;">❌ ${i18n[currentLang].error}: ${e.message}</div>`;
+            }
+        }
+
+        function buildMetaMessage(source, turnData) {
+            const jsonStr = JSON.stringify(turnData, null, 2);
+            return `来自${source}的发言与元数据：\n${turnData.utterance}\n\n协议元数据:\n\`\`\`json\n${jsonStr}\n\`\`\`\n请结合上述元数据继续。`;
+        }
+
+        function renderHistory(history) {
+            const lang = i18n[currentLang];
+            let html = '';
+            history.forEach(t => {
+                const confPercent = Math.round((t.confidence || 0.8) * 100);
+                html += `<div class="turn">
+                    <div class="turn-header">
+                        <span class="badge" style="background:#dbeafe;">${t.model}</span>
+                        ${t.role ? `<span class="badge">${lang.role}: ${t.role}</span>` : ''}
+                        ${t.intent ? `<span class="badge">${lang.intent}: ${t.intent}</span>` : ''}
+                    </div>
+                    <div class="utterance">🗣️ ${t.utterance || ''}</div>
+                    <div class="meta-section">
+                        <div class="meta-card"><div class="meta-label">🎯 ${lang.focus}</div><div class="meta-value">${t.focus || ''}</div></div>
+                        <div class="meta-card"><div class="meta-label">🔗 ${lang.extension}</div><div class="meta-value">${t.extension || ''}</div></div>
+                        <div class="meta-card"><div class="meta-label">📊 ${lang.confidence}</div>
+                            <div>${confPercent}%</div><div class="confidence-bar"><div class="confidence-fill" style="width:${confPercent}%"></div></div>
+                        </div>
+                        <div class="meta-card"><div class="meta-label">📐 ${lang.convergence}</div><div class="meta-value">${t.convergence_process || ''}</div></div>`;
+                if (t.depends_on) html += `<div class="meta-card"><div class="meta-label">🔗 ${lang.depends}</div><div class="meta-value">${t.depends_on.join(', ')}</div></div>`;
+                if (t.assumptions) html += `<div class="meta-card"><div class="meta-label">💭 ${lang.assumptions}</div><div class="meta-value">${t.assumptions.join('; ')}</div></div>`;
+                if (t.actionable) html += `<div class="meta-card"><div class="meta-label">✅ ${lang.actionable}</div><div class="meta-value">${t.actionable}</div></div>`;
+                if (t.merge_strategy) html += `<div class="meta-card"><div class="meta-label">🤝 ${lang.merge}</div><div class="meta-value">${t.merge_strategy}</div></div>`;
+                html += `</div></div>`;
+            });
+            resultContainer.innerHTML = html || `<div>无结果</div>`;
+        }
+
+        executeBtn.addEventListener('click', runTask);
+
+        populateModelSelectors();
+        renderModelConfig();
+        updateUILanguage();
+    })();
+</script>
+</body>
+</html>
