@@ -27,10 +27,8 @@
 
 ### 🚀 快速开始
 ## 📺 Demo 演示
+▶️ [点击观看演示视频]https://www.bilibili.com/video/BV1gLdWBdEY9?t=67.0
 
-<div style="position: relative; padding: 30% 45%;">
-<iframe src="//player.bilibili.com/player.html?isOutside=true&aid=116426799120455&bvid=BV1gLdWBdEY9&cid=37619303725&p=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"></iframe>
-</div>
 #### 1. 获取API密钥
 
 你需要至少两个大模型的API Key。推荐组合：
@@ -182,10 +180,7 @@ The current demo implements two modes: **multi-model adversarial debate** and **
 
 ### 🚀 Quick Start
 ## 📺 Demo 演示
-
-<div style="position: relative; padding: 30% 45%;">
-<iframe src="//player.bilibili.com/player.html?isOutside=true&aid=116426799120455&bvid=BV1gLdWBdEY9&cid=37619303725&p=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"></iframe>
-</div>
+▶️ [点击观看演示视频]https://www.bilibili.com/video/BV1gLdWBdEY9?t=67.0
 #### 1. Obtain API Keys
 
 You need API keys for at least two large models. Recommended combinations:
