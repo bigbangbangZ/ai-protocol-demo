@@ -26,7 +26,11 @@
 - **开放共建**：本项目旨在成为AI互操作性的公共基础设施，欢迎所有人参与贡献。
 
 ### 🚀 快速开始
+## 📺 Demo 演示
 
+<div style="position: relative; padding: 30% 45%;">
+<iframe src="//player.bilibili.com/player.html?isOutside=true&aid=116426799120455&bvid=BV1gLdWBdEY9&cid=37619303725&p=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"></iframe>
+</div>
 #### 1. 获取API密钥
 
 你需要至少两个大模型的API Key。推荐组合：
@@ -177,7 +181,11 @@ The current demo implements two modes: **multi-model adversarial debate** and **
 - **Open for Collaboration**: This project aspires to become a public infrastructure for AI interoperability. Everyone is welcome to contribute.
 
 ### 🚀 Quick Start
+## 📺 Demo 演示
 
+<div style="position: relative; padding: 30% 45%;">
+<iframe src="//player.bilibili.com/player.html?isOutside=true&aid=116426799120455&bvid=BV1gLdWBdEY9&cid=37619303725&p=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"></iframe>
+</div>
 #### 1. Obtain API Keys
 
 You need API keys for at least two large models. Recommended combinations:
